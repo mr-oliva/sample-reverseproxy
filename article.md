@@ -8,11 +8,11 @@
 
 ## サンプルコード
 本記事用に以下のrepositoryを用意したのでこちらを使って説明していきます。
-[サンプルコード]()
+[サンプルコード]("https://github.com/bookun/sample-reverseproxy")
 
 ## Goでリバースプロキシを書く
 
-![simple]("./images/qiita1.png)
+![simple]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita1.png")
 
 |上記画像上のIP | サンプル上のhost |
 |:----: | :---:|
@@ -20,7 +20,7 @@
 
 こういった場合は簡単にリバースプロキシを書くことができます
 
-[simple/main.go]()
+[simple/main.go]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/simple/main.go")
 
 ```go
 http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
@@ -33,7 +33,7 @@ http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
 下記の状態のときのリバースプロキシを書く際にドハマリしました。    
 (そして挙動を理解しきれておらずヤラカしましたが、今回はその内容には触れません)
 
-![problem]("")
+![problem]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita2.png")
 
 リバプロ導入したからと言って、従来のリライトの挙動が動作しなくなるのは困ります。   
 どういうことをしたいかというと *通信はIP Bに対して行うが、IP Bを持つサーバのApacheが通信を受け取った際に Host Header が Service Aもしくは Service Bのドメインを検知できるようにする* ということを達成したいことになります。
@@ -50,7 +50,7 @@ http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
 ### まず結果から
 
 詳細は下記のコードを見てください
-[problem/main.go]()
+[problem/main.go]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/problem/main.go")
 
 ポイントとしてはDirectorを以下のように設定すると要件を満たすことができます。
 
@@ -89,7 +89,42 @@ $ go run main.go
 
 httpリクエストをTraceする必要があると考え、調べてみたところ official blogに[いい記事](https://blog.golang.org/http-tracing)がありました。
 
-TODO: コードの参考になるところのリンク
+下記を追記します
+
+``` Go
+//refer to https://blog.golang.org/http-tracing
+type transport struct {
+	current *http.Request
+}
+
+func (t *transport) GotConn(info httptrace.GotConnInfo) {
+	fmt.Printf("Connected to %v\n", t.current.URL)
+}
+
+func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.current = req
+	b, err := httputil.DumpRequestOut(req, true)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(b))
+	return http.DefaultTransport.RoundTrip(req)
+}
+```
+
+これらは下記のように呼び出します。
+
+```	Go
+t := &transport{}
+trace := &httptrace.ClientTrace{
+	GotConn: t.GotConn,
+}
+
+r = r.WithContext(httptrace.WithClientTrace(r.Context(), trace))
+
+reverse := &httputil.ReverseProxy{Director: director, Transport: t}
+reverse.ServeHTTP(w, r)
+```
 
 
 ##### サンプルプログラムの実行方法
