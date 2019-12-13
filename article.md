@@ -1,18 +1,18 @@
 # GoでReverseProxyを書く際にデバッグを頑張る話
 
 ## 概要
-本記事は [Go Advent Calendar 2019]("https://qiita.com/advent-calendar/2019/go")の12/14分の記事となります。
+本記事は [Go Advent Calendar 2019](https://qiita.com/advent-calendar/2019/go)の14日目の記事となります。
 この1年はけっこうGoを書いたのでネタには困らないはずだったのですが、いざ書くとなるとネタがないものですねｗ
 
-1年で1番ハマったことを書くつもりがあまり思い出せないので直近でハマった*リバプロ*周りのことについて書いていこうと思います。
+1年で1番ハマったことを書くつもりがあまり思い出せないので直近でハマった**リバプロ**周りのことについて書いていこうと思います。
 
 ## サンプルコード
 本記事用に以下のrepositoryを用意したのでこちらを使って説明していきます。
-[サンプルコード]("https://github.com/bookun/sample-reverseproxy")
+[サンプルコード](https://github.com/bookun/sample-reverseproxy)
 
 ## Goでリバースプロキシを書く
 
-![simple]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita1.png")
+![simple](https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita1.png)
 
 |上記画像上のIP | サンプル上のhost |
 |:----: | :---:|
@@ -20,7 +20,7 @@
 
 こういった場合は簡単にリバースプロキシを書くことができます
 
-[simple/main.go]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/simple/main.go")
+[simple/main.go](https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/simple/main.go)
 
 ```go
 http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
@@ -33,10 +33,10 @@ http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
 下記の状態のときのリバースプロキシを書く際にドハマリしました。    
 (そして挙動を理解しきれておらずヤラカしましたが、今回はその内容には触れません)
 
-![problem]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita2.png")
+![problem](https://raw.githubusercontent.com/bookun/sample-reverseproxy/master/images/qiita2.png)
 
 リバプロ導入したからと言って、従来のリライトの挙動が動作しなくなるのは困ります。   
-どういうことをしたいかというと *通信はIP Bに対して行うが、IP Bを持つサーバのApacheが通信を受け取った際に Host Header が Service Aもしくは Service Bのドメインを検知できるようにする* ということを達成したいことになります。
+どういうことをしたいかというと **通信はIP Bに対して行うが、IP Bを持つサーバのApacheが通信を受け取った際に Host Header が Service B1もしくは Service B2のドメインを検知できるようにする** ということを達成したいことになります。
 
 |上記画像上のIP | サンプル上のhost |
 |:----: | :---:|
@@ -44,13 +44,13 @@ http.Handle("/", httputil.NewSingleHostReverseProxy("http://localhost:8081"))
 
 |上記画像上のhostヘッダ | サンプル上のhostヘッダ |
 |:----: | :---:|
-| Service A| 特になにもなし |
-| Service B| go.advent.2019.co.jp (架空のものです) |
+| Service B1| 特になにもなし |
+| Service B2| go.advent.2019.co.jp (架空のものです) |
 
 ### まず結果から
 
 詳細は下記のコードを見てください
-[problem/main.go]("https://raw.githubusercontent.com/bookun/sample-reverseproxy/problem/main.go")
+[problem/main.go](https://raw.githubusercontent.com/bookun/sample-reverseproxy/problem/main.go)
 
 ポイントとしてはDirectorを以下のように設定すると要件を満たすことができます。
 
@@ -77,6 +77,7 @@ $ go run main.go
 ### なんでうまくいくのか?
 ま、まぁ、あれかな。    
 通信はURLに対して行うけど、Hostヘッダの中身は `req.Host` になるってことだなたぶん。
+(次節で確認します）
 
 [mercariさんのテックブログ](https://tech.mercari.com/entry/2018/12/05/105737)にも
 
